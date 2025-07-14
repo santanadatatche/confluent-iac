@@ -19,10 +19,8 @@ provider "confluent" {
 }
 
 provider "aws" {
-  region = var.region
-  # AWS credentials should be set via environment variables:
-  # export AWS_ACCESS_KEY_ID="your-access-key"
-  # export AWS_SECRET_ACCESS_KEY="your-secret-key"
-  # Note: AWS region is the same as Confluent region
+  region     = var.region
+  access_key = var.aws_access_key_id
+  secret_key = var.aws_secret_access_key
 }
 

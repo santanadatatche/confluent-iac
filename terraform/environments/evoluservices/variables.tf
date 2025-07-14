@@ -221,3 +221,15 @@ variable "connector_dynamodb_secret_key" {
   sensitive   = true
   description = "AWS Secret Key for DynamoDB connector"
 }
+
+variable "aws_access_key_id" {
+  type        = string
+  sensitive   = true
+  description = "AWS Access Key ID for provider"
+}
+
+variable "aws_secret_access_key" {
+  type        = string
+  sensitive   = true
+  description = "AWS Secret Access Key for provider"
+}
