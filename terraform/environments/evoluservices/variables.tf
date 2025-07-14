@@ -188,3 +188,36 @@ variable "s3_sink_config_sensitive" {
   description = "Sensitive config for S3 sink connector"
   default     = {}
 }
+
+##########################
+# 🔐 Individual Sensitive Variables
+##########################
+variable "mysql_password" {
+  type        = string
+  sensitive   = true
+  description = "MySQL database password"
+}
+
+variable "connector_aws_access_key" {
+  type        = string
+  sensitive   = true
+  description = "AWS Access Key for connectors"
+}
+
+variable "connector_aws_secret_key" {
+  type        = string
+  sensitive   = true
+  description = "AWS Secret Key for connectors"
+}
+
+variable "connector_dynamodb_access_key" {
+  type        = string
+  sensitive   = true
+  description = "AWS Access Key for DynamoDB connector"
+}
+
+variable "connector_dynamodb_secret_key" {
+  type        = string
+  sensitive   = true
+  description = "AWS Secret Key for DynamoDB connector"
+}

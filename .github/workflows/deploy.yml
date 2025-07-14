@@ -38,6 +38,12 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           CONFLUENT_CLOUD_API_KEY: ${{ secrets.CONFLUENT_CLOUD_API_KEY }}
           CONFLUENT_CLOUD_API_SECRET: ${{ secrets.CONFLUENT_CLOUD_API_SECRET }}
+          TF_VAR_aws_account_id: ${{ secrets.AWS_ACCOUNT_ID }}
+          TF_VAR_mysql_password: ${{ secrets.MYSQL_PASSWORD }}
+          TF_VAR_connector_aws_access_key: ${{ secrets.CONNECTOR_AWS_ACCESS_KEY }}
+          TF_VAR_connector_aws_secret_key: ${{ secrets.CONNECTOR_AWS_SECRET_KEY }}
+          TF_VAR_connector_dynamodb_access_key: ${{ secrets.CONNECTOR_DYNAMODB_ACCESS_KEY }}
+          TF_VAR_connector_dynamodb_secret_key: ${{ secrets.CONNECTOR_DYNAMODB_SECRET_KEY }}
         run: terraform plan -var-file=terraform.tfvars
 
   deploy:
@@ -70,4 +76,10 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           CONFLUENT_CLOUD_API_KEY: ${{ secrets.CONFLUENT_CLOUD_API_KEY }}
           CONFLUENT_CLOUD_API_SECRET: ${{ secrets.CONFLUENT_CLOUD_API_SECRET }}
+          TF_VAR_aws_account_id: ${{ secrets.AWS_ACCOUNT_ID }}
+          TF_VAR_mysql_password: ${{ secrets.MYSQL_PASSWORD }}
+          TF_VAR_connector_aws_access_key: ${{ secrets.CONNECTOR_AWS_ACCESS_KEY }}
+          TF_VAR_connector_aws_secret_key: ${{ secrets.CONNECTOR_AWS_SECRET_KEY }}
+          TF_VAR_connector_dynamodb_access_key: ${{ secrets.CONNECTOR_DYNAMODB_ACCESS_KEY }}
+          TF_VAR_connector_dynamodb_secret_key: ${{ secrets.CONNECTOR_DYNAMODB_SECRET_KEY }}
         run: terraform apply -auto-approve -var-file=terraform.tfvars

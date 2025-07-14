@@ -67,7 +67,7 @@ Este projeto implementa uma infraestrutura completa do Confluent Cloud na AWS us
 
 ### Credenciais Necessárias
 - **Confluent Cloud API Key/Secret** (Cloud API)
-- **AWS Account ID**
+- **AWS Account ID** (via secret no GitHub Actions)
 - **VPC ID e Subnet IDs**
 
 ## 🧩 Módulos
@@ -217,7 +217,7 @@ cloud            = "AWS"
 region           = "us-east-2"
 
 # === AWS === 
-aws_account_id = "123456789012"
+# aws_account_id será fornecido via secret AWS_ACCOUNT_ID no GitHub Actions
 aws_default_zones = [
     { "zone" = "us-east-2a", cidr = "172.30.1.0/16" },
     { "zone" = "us-east-2b", cidr = "172.30.2.0/16" },
@@ -392,35 +392,25 @@ export CONFLUENT_CLOUD_API_SECRET="your-api-secret"
 
 ### 🚀 CI/CD e Automação
 
-#### GitHub Actions Example
-```yaml
-name: Deploy Infrastructure
-on:
-  push:
-    branches: [main]
+#### GitHub Actions
+O projeto inclui workflow automatizado em `.github/workflows/deploy.yml`:
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        
-      - name: Configure AWS Credentials
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          # AWS region is set from terraform.tfvars region variable
-          CONFLUENT_CLOUD_API_KEY: ${{ secrets.CONFLUENT_CLOUD_API_KEY }}
-          CONFLUENT_CLOUD_API_SECRET: ${{ secrets.CONFLUENT_CLOUD_API_SECRET }}
-        run: |
-          cd terraform/environments/evoluservices
-          terraform init
-          terraform plan -var-file=terraform.tfvars
-          terraform apply -auto-approve -var-file=terraform.tfvars
-```
+**Secrets necessários no GitHub**:
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_ACCOUNT_ID`
+- `CONFLUENT_CLOUD_API_KEY`
+- `CONFLUENT_CLOUD_API_SECRET`
+- `MYSQL_PASSWORD`
+- `CONNECTOR_AWS_ACCESS_KEY`
+- `CONNECTOR_AWS_SECRET_KEY`
+- `CONNECTOR_DYNAMODB_ACCESS_KEY`
+- `CONNECTOR_DYNAMODB_SECRET_KEY`
+
+**Comportamento**:
+- **Pull Request**: Executa `terraform plan`
+- **Push na main**: Executa `terraform apply`
+- **Manual**: Via "Run workflow"
 
 ### 🛡️ Segurança de Rede
 
