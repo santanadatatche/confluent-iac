@@ -176,7 +176,10 @@ module "kafka_connector_s3_sink" {
     var.s3_sink_config_nonsensitive
   )
 
-  config_sensitive = var.s3_sink_config_sensitive
+  config_sensitive = {
+    "aws.access.key.id"     = var.connector_aws_access_key
+    "aws.secret.access.key" = var.connector_aws_secret_key
+  }
 
   depends_on = [
     module.kafka_topic,
@@ -197,7 +200,10 @@ module "kafka_connector_dynamodb_source" {
     },
     var.dynamodb_source_config_nonsensitive
   )
-  config_sensitive = var.dynamodb_source_config_sensitive
+  config_sensitive = {
+    "aws.access.key.id"     = var.connector_dynamodb_access_key
+    "aws.secret.access.key" = var.connector_dynamodb_secret_key
+  }
 
 
 
@@ -219,7 +225,9 @@ module "kafka_connector_mysql_source" {
     },
     var.mysql_source_config_nonsensitive
   )
-  config_sensitive    = var.mysql_source_config_sensitive
+  config_sensitive = {
+    "database.password" = var.mysql_password
+  }
   
 
   

@@ -70,9 +70,7 @@ mysql_source_config_nonsensitive = {
   "transforms.unwrap.delete.handling.mode" = "rewrite"
 }
 
-mysql_source_config_sensitive = {
-  "database.password" = var.mysql_password
-}
+# mysql_source_config_sensitive será fornecido via variáveis de ambiente
 
 # === CONNECTOR S3 SINK ===
 s3_sink_config_nonsensitive = {
@@ -90,10 +88,7 @@ s3_sink_config_nonsensitive = {
   "errors.deadletterqueue.context.headers.enable" = "false"
 }
 
-s3_sink_config_sensitive = {
-  "aws.access.key.id"     = var.connector_aws_access_key
-  "aws.secret.access.key" = var.connector_aws_secret_key
-}
+# s3_sink_config_sensitive será fornecido via variáveis de ambiente
 
 # === CONNECTOR DynamoDB SOURCE ===
 dynamodb_source_config_nonsensitive = {
@@ -118,7 +113,4 @@ dynamodb_source_config_nonsensitive = {
   "dynamodb.cdc.max.poll.records" = "5000"
 }
   
-dynamodb_source_config_sensitive = {
-  "aws.access.key.id"     = var.connector_dynamodb_access_key
-  "aws.secret.access.key" = var.connector_dynamodb_secret_key
-}
+# dynamodb_source_config_sensitive será fornecido via variáveis de ambiente
