@@ -107,8 +107,17 @@ locals {
   zone_name = length(data.aws_route53_zone.existing_privatelink) > 0 ? data.aws_route53_zone.existing_privatelink[0].name : aws_route53_zone.privatelink[0].name
 }
 
+# Try to find existing DNS records first
+data "aws_route53_record" "existing_wildcard" {
+  count   = length(var.subnets_to_privatelink) == 1 ? 0 : 1
+  zone_id = local.zone_id
+  name    = "*.${local.zone_name}"
+  type    = "CNAME"
+}
+
+# Create wildcard record only if it doesn't exist
 resource "aws_route53_record" "privatelink" {
-  count = length(var.subnets_to_privatelink) == 1 ? 0 : 1
+  count = length(var.subnets_to_privatelink) == 1 ? 0 : (length(data.aws_route53_record.existing_wildcard) == 0 ? 1 : 0)
   zone_id = local.zone_id
   name = "*.${local.zone_name}"
   type = "CNAME"
@@ -116,18 +125,26 @@ resource "aws_route53_record" "privatelink" {
   records = [
     aws_vpc_endpoint.privatelink.dns_entry[0]["dns_name"]
   ]
-  
-  lifecycle {
-    ignore_changes = [records]
-  }
 }
 
 locals {
   endpoint_prefix = split(".", aws_vpc_endpoint.privatelink.dns_entry[0]["dns_name"])[0]
 }
 
-resource "aws_route53_record" "privatelink-zonal" {
+# Try to find existing zonal records
+data "aws_route53_record" "existing_zonal" {
   for_each = var.subnets_to_privatelink
+  zone_id  = local.zone_id
+  name     = length(var.subnets_to_privatelink) == 1 ? "*.${local.zone_name}" : "*.${each.key}.${local.zone_name}"
+  type     = "CNAME"
+}
+
+# Create zonal records only if they don't exist
+resource "aws_route53_record" "privatelink-zonal" {
+  for_each = {
+    for k, v in var.subnets_to_privatelink : k => v
+    if length(try(data.aws_route53_record.existing_zonal[k], [])) == 0
+  }
 
   zone_id = local.zone_id
   name = length(var.subnets_to_privatelink) == 1 ? "*" : "*.${each.key}"
