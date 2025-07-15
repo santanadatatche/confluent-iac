@@ -78,20 +78,7 @@ data "aws_route53_zone" "existing" {
   vpc_id       = data.aws_vpc.privatelink.id
 }
 
-# Check for existing DNS records
-data "aws_route53_record" "existing_wildcard" {
-  count   = data.aws_route53_zone.existing.zone_id != null ? 1 : 0
-  zone_id = data.aws_route53_zone.existing.zone_id
-  name    = "*.${var.dns_domain}"
-  type    = "CNAME"
-}
 
-data "aws_route53_record" "existing_flink" {
-  count   = data.aws_route53_zone.existing.zone_id != null ? 1 : 0
-  zone_id = data.aws_route53_zone.existing.zone_id
-  name    = "flink.${var.dns_domain}"
-  type    = "CNAME"
-}
 
 # Create hosted zone only if it doesn't exist
 resource "aws_route53_zone" "privatelink" {
@@ -110,7 +97,7 @@ locals {
 }
 
 resource "aws_route53_record" "privatelink" {
-  count = length(var.subnets_to_privatelink) == 1 ? 0 : (try(data.aws_route53_record.existing_wildcard[0].records, null) != null ? 0 : 1)
+  count = length(var.subnets_to_privatelink) == 1 ? 0 : 1
   zone_id = local.zone_id
   name = "*.${local.zone_name}"
   type = "CNAME"
@@ -118,6 +105,10 @@ resource "aws_route53_record" "privatelink" {
   records = [
     aws_vpc_endpoint.privatelink.dns_entry[0]["dns_name"]
   ]
+  
+  lifecycle {
+    ignore_changes = [records]
+  }
 }
 
 locals {
@@ -142,7 +133,7 @@ resource "aws_route53_record" "privatelink-zonal" {
 
 # Flink Private Endpoint DNS Record
 resource "aws_route53_record" "flink_privatelink" {
-  count = length(var.subnets_to_privatelink) == 1 ? 0 : (try(data.aws_route53_record.existing_flink[0].records, null) != null ? 0 : 1)
+  count = length(var.subnets_to_privatelink) == 1 ? 0 : 1
   zone_id = local.zone_id
   name = "flink.${local.zone_name}"
   type = "CNAME"
@@ -150,21 +141,14 @@ resource "aws_route53_record" "flink_privatelink" {
   records = [
     aws_vpc_endpoint.privatelink.dns_entry[0]["dns_name"]
   ]
-}
-
-# Check existing zonal flink records
-data "aws_route53_record" "existing_flink_zonal" {
-  for_each = data.aws_route53_zone.existing.zone_id != null ? var.subnets_to_privatelink : {}
-  zone_id  = data.aws_route53_zone.existing.zone_id
-  name     = length(var.subnets_to_privatelink) == 1 ? "flink.${var.dns_domain}" : "flink.${each.key}.${var.dns_domain}"
-  type     = "CNAME"
+  
+  lifecycle {
+    ignore_changes = [records]
+  }
 }
 
 resource "aws_route53_record" "flink_privatelink-zonal" {
-  for_each = {
-    for k, v in var.subnets_to_privatelink : k => v
-    if try(data.aws_route53_record.existing_flink_zonal[k].records, null) == null
-  }
+  for_each = var.subnets_to_privatelink
 
   zone_id = local.zone_id
   name = length(var.subnets_to_privatelink) == 1 ? "flink" : "flink.${each.key}"
@@ -177,6 +161,10 @@ resource "aws_route53_record" "flink_privatelink-zonal" {
       replace(aws_vpc_endpoint.privatelink.dns_entry[0]["dns_name"], local.endpoint_prefix, "")
     )
   ]
+  
+  lifecycle {
+    ignore_changes = [records]
+  }
 }
 
 output "vpc_endpoint_id" {
