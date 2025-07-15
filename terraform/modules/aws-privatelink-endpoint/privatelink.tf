@@ -25,16 +25,8 @@ locals {
   network_id = split(".", var.dns_domain)[0]
 }
 
-# Try to find existing security group first
-data "aws_security_group" "existing_privatelink" {
-  count  = 1
-  name   = "ccloud-privatelink_${local.network_id}_${var.vpc_id}"
-  vpc_id = data.aws_vpc.privatelink.id
-}
-
-# Create security group only if it doesn't exist
+# Create security group
 resource "aws_security_group" "privatelink" {
-  count = length(data.aws_security_group.existing_privatelink) == 0 ? 1 : 0
   name = "ccloud-privatelink_${local.network_id}_${var.vpc_id}"
   description = "Confluent Cloud Private Link minimal security group for ${var.dns_domain} in ${var.vpc_id}"
   vpc_id = data.aws_vpc.privatelink.id
@@ -65,9 +57,9 @@ resource "aws_security_group" "privatelink" {
   }
 }
 
-# Use existing or created security group
+# Use created security group
 locals {
-  security_group_id = length(data.aws_security_group.existing_privatelink) > 0 ? data.aws_security_group.existing_privatelink[0].id : aws_security_group.privatelink[0].id
+  security_group_id = aws_security_group.privatelink.id
 }
 
 resource "aws_vpc_endpoint" "privatelink" {
