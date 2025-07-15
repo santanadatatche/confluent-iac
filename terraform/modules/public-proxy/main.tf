@@ -46,11 +46,6 @@ data "aws_vpc" "proxy_vpc" {
   id = var.vpc_id
 }
 
-# Get current public IP for security group rules
-data "external" "my_public_ip" {
-  program = ["bash", "-c", "echo '{\"ip\":\"'$(curl -s https://api.ipify.org)'\"}'"]
-}
-
 resource "aws_security_group" "public" {
   name_prefix = "confluent-proxy-sg-"
   vpc_id = var.vpc_id
