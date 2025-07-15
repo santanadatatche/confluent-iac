@@ -1,0 +1,107 @@
+# === GERAL ===
+environment_name = "staging"
+cloud            = "AWS"
+region           = "us-east-2"
+
+# === AWS === 
+aws_default_zones =  [
+    { "zone" = "us-east-2a", cidr = "172.30.1.0/16" },
+    { "zone" = "us-east-2b", cidr = "172.30.2.0/16" },
+    { "zone" = "us-east-2c", cidr = "172.30.3.0/16" }
+  ]
+aws_default_ami = "ami-0c55b159cbfafe1f0"
+
+# === PRIVATE LINK ATTACHMENT CONNECTION ===
+platt_display_name = "staging-aws-platt"
+plattc_display_name = "staging-aws-plattc"
+
+# === VPC ===
+vpc_id                 = "vpc-004dd059facd2da59"
+subnets_to_privatelink = {
+  "use2-az1" = "subnet-0d983e27f872f0a5d",
+  "use2-az2" = "subnet-0f7f71038b83e867e",
+  "use2-az3" = "subnet-042e83d571b15aa47",
+}
+
+# === SERVICE ACCOUNT ===
+service_account_name        = "app-manager"
+api_key_name = "api-key-app-manager"
+api_key_description = "Kafka API Key that is owned by 'app-manager' service account"
+service_account_description = "Service Account to manage Kafka cluster"
+
+# === ROLE BINDING ===
+role_name   = "CloudClusterAdmin"
+
+# === CLUSTER ===
+cluster_name       = "enterprise-aws-cluster"
+cluster_type       = "ENTERPRISE"
+availability             = "MULTI_ZONE"
+cku = null
+
+# === TOPIC ===
+topic_name  = "topic-s3-sink-v2"
+topic_partitions = 1
+topic_config = {
+  "cleanup.policy" = "delete"
+  "retention.ms"   = "604800000"
+}
+
+# === CONNECTOR MYSQL SOURCE ===
+mysql_source_config_nonsensitive = {
+  "name"                               = "mysql-cdc-source-connector"
+  "connector.class"                    = "MySqlCdcSourceV2"
+  "tasks.max"                          = "1"
+  "database.hostname"                  = "mysql-kafka-lab.chk8gauacjmz.us-east-2.rds.amazonaws.com"
+  "database.port"                      = "3306"
+  "database.user"                      = "admin"
+  "database.server.name"               = "mysql-server"
+  "ssl.mode"                           = "required"
+  "database.timezone"                  = "UTC"
+  "table.include.list"                 = "kafkalab.customers,kafkalab.orders"
+  "topic.prefix"                       = "mysql"
+  "output.data.format"                 = "JSON"
+  "kafka.auth.mode"                    = "KAFKA_API_KEY"
+  "transforms"                         = "unwrap"
+  "transforms.unwrap.type"             = "io.debezium.transforms.ExtractNewRecordState"
+  "transforms.unwrap.drop.tombstones"  = "false"
+  "transforms.unwrap.delete.handling.mode" = "rewrite"
+}
+
+# === CONNECTOR S3 SINK ===
+s3_sink_config_nonsensitive = {
+  "input.data.format"        = "JSON"
+  "connector.class"          = "S3_SINK"
+  "name"                     = "s3-sink-connector"
+  "kafka.auth.mode"          = "SERVICE_ACCOUNT"
+  "s3.bucket.name"           = "s3-kafka-lab"
+  "output.data.format"       = "JSON"
+  "time.interval"            = "DAILY"
+  "flush.size"               = "1000"
+  "tasks.max"                = "1"
+  "errors.tolerance"         = "all"
+  "errors.deadletterqueue.topic.name" = ""
+  "errors.deadletterqueue.context.headers.enable" = "false"
+}
+
+# === CONNECTOR DynamoDB SOURCE ===
+dynamodb_source_config_nonsensitive = {
+  "name"                     = "dynamodb-cdc-source-connector"
+  "connector.class"          = "DynamoDbCdcSource"
+  "schema.context.name"      = "default"
+  "tasks.max"                = "1"
+  "kafka.auth.mode"          = "KAFKA_API_KEY"
+  "aws.dynamodb.table.name"  = "lab_table"
+  "aws.dynamodb.region"      = "us-east-2"
+  "output.data.format"       = "AVRO"
+  "aws.dynamodb.prefix"      = "dynamodb"
+  "dynamodb.service.endpoint" = "https://dynamodb.us-east-2.amazonaws.com"
+  "dynamodb.table.discovery.mode" = "INCLUDELIST"
+  "dynamodb.table.sync.mode" = "SNAPSHOT_CDC"
+  "dynamodb.table.includelist" = "lab_table"
+  "max.batch.size" = "1000"
+  "poll.linger.ms" = "5000"
+  "dynamodb.snapshot.max.poll.records" = "1000"
+  "dynamodb.cdc.checkpointing.table.prefix" = "connect-KCL-"
+  "dynamodb.cdc.table.billing.mode" = "PROVISIONED"
+  "dynamodb.cdc.max.poll.records" = "5000"
+}

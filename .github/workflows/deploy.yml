@@ -132,7 +132,7 @@ jobs:
           TF_VAR_connector_dynamodb_secret_key: ${{ secrets.CONNECTOR_DYNAMODB_SECRET_KEY }}
           TF_VAR_aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           TF_VAR_aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        run: terraform destroy -auto-approve -var-file=terraform.tfvars
+        run: terraform destroy -auto-approve -var-file=terraform.tfvars.destroy
         
       - name: Show Terraform Outputs
         if: github.event.inputs.action != 'destroy'
