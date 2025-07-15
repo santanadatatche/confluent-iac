@@ -55,6 +55,7 @@ resource "aws_security_group" "privatelink" {
 
   lifecycle {
     create_before_destroy = true
+    ignore_changes = [name, description]
   }
 }
 
@@ -79,7 +80,7 @@ resource "aws_route53_zone" "privatelink" {
   }
   
   lifecycle {
-    ignore_changes = [vpc]
+    ignore_changes = [vpc, name]
   }
 }
 
