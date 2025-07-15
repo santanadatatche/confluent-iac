@@ -47,3 +47,4 @@ output "hosts_command" {
   description = "Comando para configurar /etc/hosts manualmente"
   value       = "sudo bash -c 'echo \"${aws_instance.proxy.public_ip} ${local.cluster_hostname}\" >> /etc/hosts'"
 }
+
