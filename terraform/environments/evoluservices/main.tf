@@ -152,7 +152,8 @@ module "kafka_topic" {
   kafka_api_key       = module.api_key_manager.kafka_api_key
   kafka_api_secret    = module.api_key_manager.kafka_api_secret
   kafka_cluster_id     = module.kafka_cluster.cluster_id
-  kafka_rest_endpoint  = module.kafka_cluster.rest_endpoint
+  # Use public endpoint for GitHub Actions compatibility
+  kafka_rest_endpoint  = replace(module.kafka_cluster.rest_endpoint, ".aws.private.confluent.cloud", ".aws.confluent.cloud")
   topic_name           = var.topic_name
   partitions_count     = var.topic_partitions
   config               = var.topic_config

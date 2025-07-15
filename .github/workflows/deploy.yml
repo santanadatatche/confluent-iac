@@ -15,76 +15,8 @@ on:
         options:
           - apply
           - destroy
-          - configure-dns
 
 jobs:
-  configure-dns:
-    name: Configure DNS
-    runs-on: ubuntu-latest
-    environment: staging
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'configure-dns'
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.6.0
-          
-      - name: Terraform Init
-        working-directory: terraform/environments/evoluservices
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          CONFLUENT_CLOUD_API_KEY: ${{ secrets.CONFLUENT_CLOUD_API_KEY }}
-          CONFLUENT_CLOUD_API_SECRET: ${{ secrets.CONFLUENT_CLOUD_API_SECRET }}
-        run: terraform init
-        
-      - name: Get Terraform Outputs and Configure DNS
-        working-directory: terraform/environments/evoluservices
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        run: |
-          echo "=== Getting Terraform Outputs ==="
-          
-          # Get proxy IP
-          PROXY_IP=$(terraform output -raw proxy_public_ip 2>/dev/null || echo "")
-          
-          # Get cluster hostname
-          BOOTSTRAP_ENDPOINT=$(terraform output -raw kafka_bootstrap_endpoint 2>/dev/null || echo "")
-          CLUSTER_HOST=$(echo $BOOTSTRAP_ENDPOINT | cut -d':' -f1)
-          
-          # Get Flink domain
-          FLINK_DOMAIN=$(terraform output -raw flink_private_endpoint 2>/dev/null || echo "")
-          
-          echo "Proxy IP: $PROXY_IP"
-          echo "Cluster Host: $CLUSTER_HOST"
-          echo "Flink Domain: $FLINK_DOMAIN"
-          
-          if [ -n "$PROXY_IP" ] && [ -n "$CLUSTER_HOST" ]; then
-            echo "\n=== DNS Configuration Commands ==="
-            echo "Run these commands on your local machine:"
-            echo "sudo sed -i '' '/$CLUSTER_HOST/d' /etc/hosts 2>/dev/null || true"
-            echo "sudo sed -i '' '/$FLINK_DOMAIN/d' /etc/hosts 2>/dev/null || true"
-            echo "echo '$PROXY_IP $CLUSTER_HOST' | sudo tee -a /etc/hosts"
-            if [ -n "$FLINK_DOMAIN" ]; then
-              echo "echo '$PROXY_IP $FLINK_DOMAIN' | sudo tee -a /etc/hosts"
-            fi
-            
-            echo "\n=== SSH Command ==="
-            SSH_CMD=$(terraform output -raw proxy_ssh_command 2>/dev/null || echo "")
-            if [ -n "$SSH_CMD" ]; then
-              echo "$SSH_CMD"
-            fi
-          else
-            echo "ERROR: Could not get proxy IP or cluster host from outputs"
-            echo "Available outputs:"
-            terraform output
-          fi
-
   plan:
     name: Terraform Plan
     runs-on: ubuntu-latest
@@ -200,7 +132,7 @@ jobs:
           TF_VAR_connector_dynamodb_secret_key: ${{ secrets.CONNECTOR_DYNAMODB_SECRET_KEY }}
           TF_VAR_aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           TF_VAR_aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        run: terraform destroy -auto-approve -var-file=terraform.tfvars.destroy
+        run: terraform destroy -auto-approve -var-file=terraform.tfvars
         
       - name: Show Terraform Outputs
         if: github.event.inputs.action != 'destroy'
