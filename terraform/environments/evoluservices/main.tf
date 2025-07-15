@@ -105,34 +105,15 @@ resource "null_resource" "wait_for_proxy" {
   }
 }
 
-# Configure DNS automatically
-resource "null_resource" "configure_hosts" {
-  depends_on = [null_resource.wait_for_proxy]
+# Configure DNS with dedicated module
+module "dns_manager" {
+  source = "../../modules/dns-manager"
   
-  provisioner "local-exec" {
-    command = <<-EOF
-      # Try to configure hosts automatically
-      if command -v sudo >/dev/null 2>&1; then
-        # Remove existing entries
-        sudo sed -i '' '/${regex("(.*):", module.kafka_cluster.bootstrap_endpoint)[0]}/d' /etc/hosts 2>/dev/null || true
-        sudo sed -i '' '/flink.${module.private_link_attachment.dns_domain}/d' /etc/hosts 2>/dev/null || true
-        # Add new entries
-        echo '${module.proxy.proxy_public_ip} ${regex("(.*):", module.kafka_cluster.bootstrap_endpoint)[0]}' | sudo tee -a /etc/hosts
-        echo '${module.proxy.proxy_public_ip} flink.${module.private_link_attachment.dns_domain}' | sudo tee -a /etc/hosts
-        echo "DNS configured successfully for Kafka and Flink"
-      else
-        echo "WARNING: sudo not available. Manual DNS configuration required:"
-        echo "echo '${module.proxy.proxy_public_ip} ${regex("(.*):", module.kafka_cluster.bootstrap_endpoint)[0]}' >> /etc/hosts"
-        echo "echo '${module.proxy.proxy_public_ip} flink.${module.private_link_attachment.dns_domain}' >> /etc/hosts"
-      fi
-    EOF
-  }
+  proxy_ip     = module.proxy.proxy_public_ip
+  cluster_host = regex("(.*):", module.kafka_cluster.bootstrap_endpoint)[0]
+  flink_host   = "flink.${module.private_link_attachment.dns_domain}"
   
-  triggers = {
-    proxy_ip = module.proxy.proxy_public_ip
-    cluster_host = regex("(.*):", module.kafka_cluster.bootstrap_endpoint)[0]
-    flink_host = "flink.${module.private_link_attachment.dns_domain}"
-  }
+  depends_on = [module.proxy]
 }
 
 # Wait for role binding to be ready
@@ -158,7 +139,7 @@ module "kafka_topic" {
   depends_on = [
     module.api_key_manager,
     module.role_binding_topic,
-    null_resource.configure_hosts
+    module.dns_manager
   ]
 }
 
