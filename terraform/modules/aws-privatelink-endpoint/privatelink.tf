@@ -106,6 +106,7 @@ resource "aws_route53_record" "privatelink" {
   name = "*.${local.zone_name}"
   type = "CNAME"
   ttl  = "60"
+  allow_overwrite = true
   records = [
     aws_vpc_endpoint.privatelink.dns_entry[0]["dns_name"]
   ]
@@ -123,6 +124,7 @@ resource "aws_route53_record" "privatelink-zonal" {
   name = length(var.subnets_to_privatelink) == 1 ? "*" : "*.${each.key}"
   type = "CNAME"
   ttl  = "60"
+  allow_overwrite = true
   records = [
     format("%s-%s%s",
       local.endpoint_prefix,
