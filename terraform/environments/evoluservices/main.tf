@@ -107,7 +107,7 @@ resource "null_resource" "wait_for_proxy" {
 
 
 
-# Configure DNS locally for Terraform
+# Configure DNS locally for Terraform - always runs
 resource "null_resource" "configure_hosts" {
   depends_on = [module.proxy]
   
@@ -138,6 +138,7 @@ resource "null_resource" "configure_hosts" {
   }
   
   triggers = {
+    always_run = timestamp()
     proxy_ip = module.proxy.proxy_public_ip
     cluster_host = regex("(.*):", module.kafka_cluster.bootstrap_endpoint)[0]
     dns_domain = module.private_link_attachment.dns_domain
