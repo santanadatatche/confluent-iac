@@ -131,41 +131,8 @@ resource "aws_route53_record" "privatelink-zonal" {
   ]
 }
 
-# Flink Private Endpoint DNS Record
-resource "aws_route53_record" "flink_privatelink" {
-  count = length(var.subnets_to_privatelink) == 1 ? 0 : 1
-  zone_id = local.zone_id
-  name = "flink.${local.zone_name}"
-  type = "CNAME"
-  ttl  = "60"
-  records = [
-    aws_vpc_endpoint.privatelink.dns_entry[0]["dns_name"]
-  ]
-  
-  lifecycle {
-    ignore_changes = [records]
-  }
-}
-
-resource "aws_route53_record" "flink_privatelink-zonal" {
-  for_each = var.subnets_to_privatelink
-
-  zone_id = local.zone_id
-  name = length(var.subnets_to_privatelink) == 1 ? "flink" : "flink.${each.key}"
-  type = "CNAME"
-  ttl  = "60"
-  records = [
-    format("%s-%s%s",
-      local.endpoint_prefix,
-      data.aws_availability_zone.privatelink[each.key].name,
-      replace(aws_vpc_endpoint.privatelink.dns_entry[0]["dns_name"], local.endpoint_prefix, "")
-    )
-  ]
-  
-  lifecycle {
-    ignore_changes = [records]
-  }
-}
+# Flink DNS records already exist - skipping creation
+# The existing records will be used for Flink connectivity
 
 output "vpc_endpoint_id" {
   value = aws_vpc_endpoint.privatelink.id
