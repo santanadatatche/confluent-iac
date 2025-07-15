@@ -161,7 +161,12 @@ echo "Starting user-data script"
 
 # Update system
 apt-get update -y
-apt-get install -y nginx netcat-openbsd
+apt-get install -y nginx netcat-openbsd dnsutils
+
+# Configure DNS resolution for Confluent endpoints
+echo "# Confluent DNS entries - managed by Terraform" >> /etc/hosts
+echo "169.254.169.253 ${var.cluster_hostname}" >> /etc/hosts
+echo "169.254.169.253 flink.${regex("([^.]+\\.[^.]+\\.[^.]+\\.[^.]+\\.[^.]+)$", var.cluster_hostname)[0]}" >> /etc/hosts
 
 # Create NGINX configuration
 cat > /etc/nginx/nginx.conf << 'EOL'

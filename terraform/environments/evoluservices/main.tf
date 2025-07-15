@@ -105,16 +105,7 @@ resource "null_resource" "wait_for_proxy" {
   }
 }
 
-# Configure DNS with dedicated module
-module "dns_manager" {
-  source = "../../modules/dns-manager"
-  
-  proxy_ip     = module.proxy.proxy_public_ip
-  cluster_host = regex("(.*):", module.kafka_cluster.bootstrap_endpoint)[0]
-  flink_host   = "flink.${module.private_link_attachment.dns_domain}"
-  
-  depends_on = [module.proxy]
-}
+
 
 # Wait for role binding to be ready
 resource "null_resource" "wait_for_permissions" {
@@ -139,7 +130,7 @@ module "kafka_topic" {
   depends_on = [
     module.api_key_manager,
     module.role_binding_topic,
-    module.dns_manager
+    module.proxy
   ]
 }
 
