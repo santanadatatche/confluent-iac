@@ -6,6 +6,15 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      action:
+        description: 'Terraform Action'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - apply
+          - destroy
 
 jobs:
   plan:
@@ -58,10 +67,10 @@ jobs:
         run: terraform plan -var-file=terraform.tfvars
 
   deploy:
-    name: Terraform Apply
+    name: Terraform Deploy
     runs-on: ubuntu-latest
     environment: staging
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     
     steps:
       - name: Checkout
@@ -90,6 +99,7 @@ jobs:
         run: terraform init
         
       - name: Terraform Apply
+        if: github.event.inputs.action != 'destroy'
         working-directory: terraform/environments/evoluservices
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -106,7 +116,26 @@ jobs:
           TF_VAR_aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: terraform apply -auto-approve -var-file=terraform.tfvars
         
+      - name: Terraform Destroy
+        if: github.event.inputs.action == 'destroy'
+        working-directory: terraform/environments/evoluservices
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          CONFLUENT_CLOUD_API_KEY: ${{ secrets.CONFLUENT_CLOUD_API_KEY }}
+          CONFLUENT_CLOUD_API_SECRET: ${{ secrets.CONFLUENT_CLOUD_API_SECRET }}
+          TF_VAR_aws_account_id: ${{ secrets.AWS_ACCOUNT_ID }}
+          TF_VAR_mysql_password: ${{ secrets.MYSQL_PASSWORD }}
+          TF_VAR_connector_aws_access_key: ${{ secrets.CONNECTOR_AWS_ACCESS_KEY }}
+          TF_VAR_connector_aws_secret_key: ${{ secrets.CONNECTOR_AWS_SECRET_KEY }}
+          TF_VAR_connector_dynamodb_access_key: ${{ secrets.CONNECTOR_DYNAMODB_ACCESS_KEY }}
+          TF_VAR_connector_dynamodb_secret_key: ${{ secrets.CONNECTOR_DYNAMODB_SECRET_KEY }}
+          TF_VAR_aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          TF_VAR_aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: terraform destroy -auto-approve -var-file=terraform.tfvars
+        
       - name: Show Terraform Outputs
+        if: github.event.inputs.action != 'destroy'
         working-directory: terraform/environments/evoluservices
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
