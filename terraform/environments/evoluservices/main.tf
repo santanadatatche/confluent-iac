@@ -107,6 +107,23 @@ resource "null_resource" "wait_for_permissions" {
   }
 }
 
+# Configure DNS for Confluent Cloud
+resource "null_resource" "configure_dns" {
+  depends_on = [module.kafka_cluster, module.proxy.proxy_ready]
+  
+  provisioner "local-exec" {
+    command = "bash ../../scripts/configure_dns.sh ${module.kafka_cluster.cluster_id} ${var.region}"
+  }
+  
+  # Adicionar hosts entry para o cluster
+  provisioner "local-exec" {
+    command = <<-EOT
+      echo "127.0.0.1 ${module.kafka_cluster.cluster_id}.${var.region}.aws.confluent.cloud" | sudo tee -a /etc/hosts || true
+      echo "Adicionado entrada de DNS para ${module.kafka_cluster.cluster_id}.${var.region}.aws.confluent.cloud"
+    EOT
+  }
+}
+
 module "kafka_topic" {
   source = "../../modules/kafka-topic"
   
@@ -124,7 +141,8 @@ module "kafka_topic" {
     module.role_binding_topic,
     module.private_link_attachment_connection,
     module.proxy.proxy_ready,
-    null_resource.wait_for_permissions
+    null_resource.wait_for_permissions,
+    null_resource.configure_dns
   ]
 }
 
