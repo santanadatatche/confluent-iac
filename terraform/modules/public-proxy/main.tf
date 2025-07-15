@@ -124,6 +124,12 @@ resource "local_file" "public_key" {
 resource "aws_key_pair" "deployer" {
   key_name   = "ubuntu_proxy_ssh_key"
   public_key = tls_private_key.ssh_key.public_key_openssh
+  tags = {
+    Name = "confluent-proxy-ssh-key"
+  }
+  lifecycle {
+    ignore_changes = [public_key]
+  }
 }
 
 ## Proxy Configuration

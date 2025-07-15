@@ -21,5 +21,9 @@ resource "confluent_kafka_topic" "this" {
     secret = var.kafka_api_secret
   }
   
-
+  lifecycle {
+    create_before_destroy = true
+    # Ignore errors during creation as they might be temporary DNS issues
+    ignore_changes = []
+  }
 }

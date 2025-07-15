@@ -121,7 +121,10 @@ module "kafka_topic" {
 
   depends_on = [
     module.api_key_manager,
-    module.role_binding_topic
+    module.role_binding_topic,
+    module.private_link_attachment_connection,
+    module.proxy.proxy_ready,
+    null_resource.wait_for_permissions
   ]
 }
 
