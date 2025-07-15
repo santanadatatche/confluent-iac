@@ -107,31 +107,24 @@ resource "null_resource" "wait_for_permissions" {
   }
 }
 
-# Configure DNS for Confluent Cloud
+# Configure DNS for Confluent Cloud (informativo apenas)
 resource "null_resource" "configure_dns" {
   depends_on = [module.kafka_cluster, module.proxy.proxy_ready]
   
   provisioner "local-exec" {
     command = "bash ../../scripts/configure_dns.sh ${module.kafka_cluster.cluster_id} ${var.region}"
   }
-  
-  # Adicionar hosts entry para o cluster
-  provisioner "local-exec" {
-    command = <<-EOT
-      echo "127.0.0.1 ${module.kafka_cluster.cluster_id}.${var.region}.aws.confluent.cloud" | sudo tee -a /etc/hosts || true
-      echo "Adicionado entrada de DNS para ${module.kafka_cluster.cluster_id}.${var.region}.aws.confluent.cloud"
-    EOT
-  }
 }
 
+# Criar tópico Kafka usando endpoint público para compatibilidade com GitHub Actions
 module "kafka_topic" {
   source = "../../modules/kafka-topic"
   
   kafka_api_key       = module.api_key_manager.kafka_api_key
   kafka_api_secret    = module.api_key_manager.kafka_api_secret
   kafka_cluster_id     = module.kafka_cluster.cluster_id
-  # Use public endpoint for GitHub Actions compatibility
-  kafka_rest_endpoint  = module.kafka_cluster.rest_endpoint_public
+  # Forçar uso do endpoint público para GitHub Actions
+  kafka_rest_endpoint  = replace(module.kafka_cluster.rest_endpoint_public, ".confluent.cloud", ".aws.glb.confluent.cloud")
   topic_name           = var.topic_name
   partitions_count     = var.topic_partitions
   config               = var.topic_config

@@ -13,28 +13,15 @@ if [ -z "$CLUSTER_ID" ] || [ -z "$REGION" ]; then
   exit 1
 fi
 
-# Adicionar entrada no /etc/hosts para o cluster
+# Adicionar entrada no /etc/hosts para o cluster (apenas informativo no GitHub Actions)
 HOSTS_ENTRY="127.0.0.1 ${CLUSTER_ID}.${REGION}.aws.confluent.cloud"
-echo "Adicionando entrada no /etc/hosts: $HOSTS_ENTRY"
+echo "Entrada DNS que seria adicionada: $HOSTS_ENTRY"
 
-# Verificar se a entrada já existe
-if grep -q "${CLUSTER_ID}.${REGION}.aws.confluent.cloud" /etc/hosts; then
-  echo "Entrada já existe no /etc/hosts"
-else
-  echo "Adicionando entrada ao /etc/hosts"
-  echo "$HOSTS_ENTRY" | sudo tee -a /etc/hosts
-fi
+# No GitHub Actions, não podemos modificar /etc/hosts, então apenas exibimos a informação
+echo "Executando em ambiente CI/CD - pulando modificação de arquivos do sistema"
 
-# Configurar o resolvedor DNS para usar o AWS DNS
-echo "Configurando resolvedor DNS..."
+# Exibir informações de DNS para diagnóstico
+echo "Informações de DNS:"
+cat /etc/resolv.conf || echo "Não foi possível ler /etc/resolv.conf"
 
-# Criar arquivo de configuração temporário
-cat > /tmp/confluent-dns.conf << EOF
-# Configuração DNS para Confluent Cloud
-nameserver 169.254.169.253
-EOF
-
-# Mover para o diretório de configuração do resolvedor
-sudo cp /tmp/confluent-dns.conf /etc/resolver/confluent.cloud
-
-echo "Configuração DNS concluída!"
+echo "Configuração DNS concluída (modo informativo)"
