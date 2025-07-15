@@ -8,6 +8,10 @@ terraform {
       source  = "confluentinc/confluent"
       version = "2.32.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
 }
 
@@ -121,9 +125,17 @@ resource "local_file" "public_key" {
   filename = "./.ssh/terraform_aws_rsa.pub"
 }
 
+# Generate a unique timestamp for the key name
+resource "random_id" "key_suffix" {
+  byte_length = 4
+}
+
 resource "aws_key_pair" "deployer" {
-  key_name   = "ubuntu_proxy_ssh_key"
+  key_name   = "ubuntu_proxy_ssh_key_${random_id.key_suffix.hex}"
   public_key = tls_private_key.ssh_key.public_key_openssh
+  tags = {
+    Name = "confluent-proxy-ssh-key"
+  }
 }
 
 ## Proxy Configuration
