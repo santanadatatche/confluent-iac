@@ -15,7 +15,9 @@ Este projeto implementa uma infraestrutura completa do Confluent Cloud na AWS us
 - [Segurança](#-segurança)
 
 ## 🏗️ Arquitetura
-
+![alt text](image-1.png)
+![alt text](image.png)
+![alt text](image-2.png)
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   MySQL RDS     │    │  DynamoDB Table  │    │   S3 Bucket     │

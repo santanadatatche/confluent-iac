@@ -3,9 +3,7 @@ environment_name = "staging"
 cloud            = "AWS"
 region           = "us-east-2"
 
-
 # === AWS === 
-# aws_account_id será fornecido via TF_VAR_aws_account_id no GitHub Actions
 aws_default_zones =  [
     { "zone" = "us-east-2a", cidr = "172.30.1.0/16" },
     { "zone" = "us-east-2b", cidr = "172.30.2.0/16" },
