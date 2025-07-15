@@ -105,3 +105,17 @@ jobs:
           TF_VAR_aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           TF_VAR_aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: terraform apply -auto-approve -var-file=terraform.tfvars
+        
+      - name: Show Terraform Outputs
+        working-directory: terraform/environments/evoluservices
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          echo "=== Available Outputs ==="
+          terraform output
+          echo "\n=== Checking for hosts_command ==="
+          terraform output hosts_command 2>/dev/null || echo "hosts_command output not available"
+          echo "\n=== Checking for proxy outputs ==="
+          terraform output proxy_public_ip 2>/dev/null || echo "proxy_public_ip not available"
+          terraform output proxy_ssh_command 2>/dev/null || echo "proxy_ssh_command not available"
