@@ -96,19 +96,17 @@ module "api_key_manager" {
   environment_id      = module.environment.environment_id
 }
 
-# Wait for proxy to be ready before creating topics (only when proxy exists)
+# Wait for proxy to be ready before creating topics
 resource "null_resource" "wait_for_proxy" {
-  count = can(module.proxy.proxy_ready) ? 1 : 0
   depends_on = [module.proxy]
   
   provisioner "local-exec" {
-    command = "echo 'Proxy is ready: ${module.proxy.proxy_ready}'"
+    command = "echo 'Proxy is ready'"
   }
 }
 
-# Configure DNS automatically (only when proxy exists)
+# Configure DNS automatically
 resource "null_resource" "configure_hosts" {
-  count = can(module.proxy.proxy_public_ip) ? 1 : 0
   depends_on = [null_resource.wait_for_proxy]
   
   provisioner "local-exec" {
