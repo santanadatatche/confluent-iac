@@ -21,7 +21,5 @@ resource "confluent_kafka_topic" "this" {
     secret = var.kafka_api_secret
   }
   
-  lifecycle {
-    ignore_changes = [rest_endpoint]
-  }
+
 }

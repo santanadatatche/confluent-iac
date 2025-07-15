@@ -53,11 +53,6 @@ resource "confluent_kafka_cluster" "enterprise" {
   }
 
   enterprise {}
-  
-  # Enable both public and private networking
-  network {
-    connection_types = ["PUBLIC", "PRIVATELINK"]
-  }
 
 }
 
