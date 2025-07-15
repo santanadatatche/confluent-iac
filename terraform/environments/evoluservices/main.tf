@@ -96,7 +96,44 @@ module "api_key_manager" {
   environment_id      = module.environment.environment_id
 }
 
+# Wait for proxy to be ready before creating topics
+resource "null_resource" "wait_for_proxy" {
+  depends_on = [module.proxy]
+  
+  provisioner "local-exec" {
+    command = "echo 'Proxy is ready: ${module.proxy.proxy_ready}'"
+  }
+}
 
+# Configure DNS automatically
+resource "null_resource" "configure_hosts" {
+  depends_on = [null_resource.wait_for_proxy]
+  
+  provisioner "local-exec" {
+    command = <<-EOF
+      # Try to configure hosts automatically
+      if command -v sudo >/dev/null 2>&1; then
+        # Remove existing entries
+        sudo sed -i '' '/${regex("(.*):", module.kafka_cluster.bootstrap_endpoint)[0]}/d' /etc/hosts 2>/dev/null || true
+        sudo sed -i '' '/flink.${module.private_link_attachment.dns_domain}/d' /etc/hosts 2>/dev/null || true
+        # Add new entries
+        echo '${module.proxy.proxy_public_ip} ${regex("(.*):", module.kafka_cluster.bootstrap_endpoint)[0]}' | sudo tee -a /etc/hosts
+        echo '${module.proxy.proxy_public_ip} flink.${module.private_link_attachment.dns_domain}' | sudo tee -a /etc/hosts
+        echo "DNS configured successfully for Kafka and Flink"
+      else
+        echo "WARNING: sudo not available. Manual DNS configuration required:"
+        echo "echo '${module.proxy.proxy_public_ip} ${regex("(.*):", module.kafka_cluster.bootstrap_endpoint)[0]}' >> /etc/hosts"
+        echo "echo '${module.proxy.proxy_public_ip} flink.${module.private_link_attachment.dns_domain}' >> /etc/hosts"
+      fi
+    EOF
+  }
+  
+  triggers = {
+    proxy_ip = module.proxy.proxy_public_ip
+    cluster_host = regex("(.*):", module.kafka_cluster.bootstrap_endpoint)[0]
+    flink_host = "flink.${module.private_link_attachment.dns_domain}"
+  }
+}
 
 # Wait for role binding to be ready
 resource "null_resource" "wait_for_permissions" {
@@ -107,28 +144,13 @@ resource "null_resource" "wait_for_permissions" {
   }
 }
 
-# Atualizar arquivo hosts para resolver nomes do Confluent Cloud
-resource "null_resource" "update_hosts_file" {
-  depends_on = [module.kafka_cluster, module.proxy.proxy_ready, module.private_link_attachment]
-  
-  provisioner "local-exec" {
-    command = "bash ../../scripts/update_hosts.sh ${module.proxy.proxy_public_ip} ${regex("(.*):", module.kafka_cluster.bootstrap_endpoint)[0]} flink.${module.private_link_attachment.dns_domain}"
-  }
-  
-  # Garantir que o recurso seja sempre executado
-  triggers = {
-    always_run = timestamp()
-  }
-}
-
 module "kafka_topic" {
   source = "../../modules/kafka-topic"
   
   kafka_api_key       = module.api_key_manager.kafka_api_key
   kafka_api_secret    = module.api_key_manager.kafka_api_secret
   kafka_cluster_id     = module.kafka_cluster.cluster_id
-  # Use public endpoint for GitHub Actions compatibility
-  kafka_rest_endpoint  = module.kafka_cluster.rest_endpoint_public
+  kafka_rest_endpoint  = module.kafka_cluster.rest_endpoint
   topic_name           = var.topic_name
   partitions_count     = var.topic_partitions
   config               = var.topic_config
@@ -136,10 +158,7 @@ module "kafka_topic" {
   depends_on = [
     module.api_key_manager,
     module.role_binding_topic,
-    module.private_link_attachment_connection,
-    module.proxy.proxy_ready,
-    null_resource.wait_for_permissions,
-    null_resource.update_hosts_file
+    null_resource.configure_hosts
   ]
 }
 

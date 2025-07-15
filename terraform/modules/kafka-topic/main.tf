@@ -20,8 +20,4 @@ resource "confluent_kafka_topic" "this" {
     key    = var.kafka_api_key
     secret = var.kafka_api_secret
   }
-  
-  lifecycle {
-    create_before_destroy = true
-  }
 }

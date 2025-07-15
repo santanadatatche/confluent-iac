@@ -25,13 +25,14 @@ locals {
   network_id = split(".", var.dns_domain)[0]
 }
 
-# Create security group
 resource "aws_security_group" "privatelink" {
+  # Ensure that SG is unique, so that this module can be used multiple times within a single VPC
   name = "ccloud-privatelink_${local.network_id}_${var.vpc_id}"
   description = "Confluent Cloud Private Link minimal security group for ${var.dns_domain} in ${var.vpc_id}"
   vpc_id = data.aws_vpc.privatelink.id
 
   ingress {
+    # only necessary if redirect support from http/https is desired
     from_port = 80
     to_port = 80
     protocol = "tcp"
@@ -57,18 +58,13 @@ resource "aws_security_group" "privatelink" {
   }
 }
 
-# Use created security group
-locals {
-  security_group_id = aws_security_group.privatelink.id
-}
-
 resource "aws_vpc_endpoint" "privatelink" {
   vpc_id = data.aws_vpc.privatelink.id
   service_name = var.privatelink_service_name
   vpc_endpoint_type = "Interface"
 
   security_group_ids = [
-    local.security_group_id,
+    aws_security_group.privatelink.id,
   ]
 
   subnet_ids = [for zone, subnet_id in var.subnets_to_privatelink: subnet_id]
@@ -76,16 +72,17 @@ resource "aws_vpc_endpoint" "privatelink" {
 }
 
 # Try to find existing hosted zone first
-data "aws_route53_zone" "existing_privatelink" {
-  count        = 1
+data "aws_route53_zone" "existing" {
   name         = var.dns_domain
   private_zone = true
   vpc_id       = data.aws_vpc.privatelink.id
 }
 
+
+
 # Create hosted zone only if it doesn't exist
 resource "aws_route53_zone" "privatelink" {
-  count = length(data.aws_route53_zone.existing_privatelink) == 0 ? 1 : 0
+  count = data.aws_route53_zone.existing.zone_id == null ? 1 : 0
   name = var.dns_domain
 
   vpc {
@@ -93,30 +90,31 @@ resource "aws_route53_zone" "privatelink" {
   }
 }
 
-# Use existing or created zone
+# Use existing zone if available, otherwise use created zone
 locals {
-  zone_id = length(data.aws_route53_zone.existing_privatelink) > 0 ? data.aws_route53_zone.existing_privatelink[0].zone_id : aws_route53_zone.privatelink[0].zone_id
-  zone_name = length(data.aws_route53_zone.existing_privatelink) > 0 ? data.aws_route53_zone.existing_privatelink[0].name : aws_route53_zone.privatelink[0].name
+  zone_id = data.aws_route53_zone.existing.zone_id != null ? data.aws_route53_zone.existing.zone_id : aws_route53_zone.privatelink[0].zone_id
+  zone_name = data.aws_route53_zone.existing.name != null ? data.aws_route53_zone.existing.name : aws_route53_zone.privatelink[0].name
 }
 
-# Create wildcard record
 resource "aws_route53_record" "privatelink" {
   count = length(var.subnets_to_privatelink) == 1 ? 0 : 1
   zone_id = local.zone_id
   name = "*.${local.zone_name}"
   type = "CNAME"
   ttl  = "60"
-  allow_overwrite = true
   records = [
     aws_vpc_endpoint.privatelink.dns_entry[0]["dns_name"]
   ]
+  
+  lifecycle {
+    ignore_changes = [records]
+  }
 }
 
 locals {
   endpoint_prefix = split(".", aws_vpc_endpoint.privatelink.dns_entry[0]["dns_name"])[0]
 }
 
-# Create zonal records
 resource "aws_route53_record" "privatelink-zonal" {
   for_each = var.subnets_to_privatelink
 
@@ -124,7 +122,6 @@ resource "aws_route53_record" "privatelink-zonal" {
   name = length(var.subnets_to_privatelink) == 1 ? "*" : "*.${each.key}"
   type = "CNAME"
   ttl  = "60"
-  allow_overwrite = true
   records = [
     format("%s-%s%s",
       local.endpoint_prefix,
