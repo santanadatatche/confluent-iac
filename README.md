@@ -395,22 +395,26 @@ export CONFLUENT_CLOUD_API_SECRET="your-api-secret"
 #### GitHub Actions
 O projeto inclui workflow automatizado em `.github/workflows/deploy.yml`:
 
-**Secrets necessários no GitHub**:
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
-- `AWS_ACCOUNT_ID`
-- `CONFLUENT_CLOUD_API_KEY`
-- `CONFLUENT_CLOUD_API_SECRET`
-- `MYSQL_PASSWORD`
-- `CONNECTOR_AWS_ACCESS_KEY`
-- `CONNECTOR_AWS_SECRET_KEY`
-- `CONNECTOR_DYNAMODB_ACCESS_KEY`
-- `CONNECTOR_DYNAMODB_SECRET_KEY`
+**Configuração necessária**:
+1. **Environment**: Crie um environment chamado `staging` no GitHub
+2. **Remote State**: Usa bucket S3 `confluent-iac-terraform-state` (criado automaticamente)
+3. **Secrets no Environment `staging`**:
+   - `AWS_ACCESS_KEY_ID`
+   - `AWS_SECRET_ACCESS_KEY`
+   - `AWS_ACCOUNT_ID`
+   - `CONFLUENT_CLOUD_API_KEY`
+   - `CONFLUENT_CLOUD_API_SECRET`
+   - `MYSQL_PASSWORD`
+   - `CONNECTOR_AWS_ACCESS_KEY`
+   - `CONNECTOR_AWS_SECRET_KEY`
+   - `CONNECTOR_DYNAMODB_ACCESS_KEY`
+   - `CONNECTOR_DYNAMODB_SECRET_KEY`
 
 **Comportamento**:
 - **Pull Request**: Executa `terraform plan`
 - **Push na main**: Executa `terraform apply`
 - **Manual**: Via "Run workflow"
+- **State Management**: Armazenado no S3 com versionamento
 
 ### 🛡️ Segurança de Rede
 
@@ -466,7 +470,15 @@ aws logs describe-log-groups --log-group-name-prefix "/aws/"
 - [ ] Atualizar dependências e providers
 - [ ] Testar procedimentos de backup/restore
 
-## 📊 Outputs Importantes
+## 📊 Terraform State Management
+
+### Remote State (S3)
+- **Bucket**: `confluent-iac-terraform-state`
+- **Key**: `staging/terraform.tfstate`
+- **Region**: `us-east-2`
+- **Versionamento**: Habilitado
+
+### Outputs Importantes
 
 ```bash
 # Informações do cluster

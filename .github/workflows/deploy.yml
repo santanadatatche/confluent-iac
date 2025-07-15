@@ -23,6 +23,14 @@ jobs:
         with:
           terraform_version: 1.6.0
           
+      - name: Create S3 Bucket for State
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          aws s3api create-bucket --bucket confluent-iac-terraform-state --region us-east-2 --create-bucket-configuration LocationConstraint=us-east-2 2>/dev/null || true
+          aws s3api put-bucket-versioning --bucket confluent-iac-terraform-state --versioning-configuration Status=Enabled
+          
       - name: Terraform Init
         working-directory: terraform/environments/evoluservices
         env:
@@ -63,6 +71,14 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.6.0
+          
+      - name: Create S3 Bucket for State
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          aws s3api create-bucket --bucket confluent-iac-terraform-state --region us-east-2 --create-bucket-configuration LocationConstraint=us-east-2 2>/dev/null || true
+          aws s3api put-bucket-versioning --bucket confluent-iac-terraform-state --versioning-configuration Status=Enabled
           
       - name: Terraform Init
         working-directory: terraform/environments/evoluservices
