@@ -70,15 +70,13 @@ resource "aws_vpc_endpoint" "privatelink" {
   subnet_ids = [for zone, subnet_id in var.subnets_to_privatelink: subnet_id]
   private_dns_enabled = false
 }
-
+/*
 # Try to find existing hosted zone first
 data "aws_route53_zone" "existing" {
   name         = var.dns_domain
   private_zone = true
   vpc_id       = data.aws_vpc.privatelink.id
 }
-
-
 
 # Create hosted zone only if it doesn't exist
 resource "aws_route53_zone" "privatelink" {
@@ -94,6 +92,20 @@ resource "aws_route53_zone" "privatelink" {
 locals {
   zone_id = data.aws_route53_zone.existing.zone_id != null ? data.aws_route53_zone.existing.zone_id : aws_route53_zone.privatelink[0].zone_id
   zone_name = data.aws_route53_zone.existing.name != null ? data.aws_route53_zone.existing.name : aws_route53_zone.privatelink[0].name
+}
+*/
+
+resource "aws_route53_zone" "privatelink" {
+  name = var.dns_domain
+
+  vpc {
+    vpc_id = data.aws_vpc.privatelink.id
+  }
+}
+
+locals {
+  zone_id = aws_route53_zone.privatelink.zone_id
+  zone_name = aws_route53_zone.privatelink.name
 }
 
 resource "aws_route53_record" "privatelink" {
