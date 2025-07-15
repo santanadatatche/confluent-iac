@@ -23,7 +23,5 @@ resource "confluent_kafka_topic" "this" {
   
   lifecycle {
     create_before_destroy = true
-    # Ignore errors during creation as they might be temporary DNS issues
-    ignore_changes = []
   }
 }

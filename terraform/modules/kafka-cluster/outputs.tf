@@ -53,6 +53,21 @@ output "rest_endpoint_public" {
   )
 }
 
+# Global public endpoint for GitHub Actions
+output "rest_endpoint_public_global" {
+  value = replace(
+    try(
+      confluent_kafka_cluster.basic[0].rest_endpoint,
+      confluent_kafka_cluster.standard[0].rest_endpoint,
+      confluent_kafka_cluster.enterprise[0].rest_endpoint,
+      confluent_kafka_cluster.dedicated[0].rest_endpoint,
+      confluent_kafka_cluster.freight[0].rest_endpoint
+    ),
+    ".us-east-2.aws.private.confluent.cloud",
+    ".api.confluent.cloud"
+  )
+}
+
 output "api_version" {
   value = try(
     confluent_kafka_cluster.basic[0].api_version,
