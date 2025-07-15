@@ -113,11 +113,7 @@ resource "null_resource" "configure_hosts" {
   
   provisioner "local-exec" {
     command = <<-EOF
-      if [ "$GITHUB_ACTIONS" = "true" ]; then
-        echo "Running in GitHub Actions - DNS configuration not needed"
-        exit 0
-      fi
-      
+      # Configure DNS for local Terraform execution
       if command -v sudo >/dev/null 2>&1; then
         sudo sed -i '' '/${regex("(.*):", module.kafka_cluster.bootstrap_endpoint)[0]}/d' /etc/hosts 2>/dev/null || true
         sudo sed -i '' '/flink.${module.private_link_attachment.dns_domain}/d' /etc/hosts 2>/dev/null || true
@@ -133,8 +129,8 @@ resource "null_resource" "configure_hosts" {
   provisioner "local-exec" {
     when = destroy
     command = <<-EOF
-      if [ "$GITHUB_ACTIONS" != "true" ] && command -v sudo >/dev/null 2>&1; then
-        sudo sed -i '' '/${regex("(.*):", self.triggers.cluster_host)[0]}/d' /etc/hosts 2>/dev/null || true
+      if command -v sudo >/dev/null 2>&1; then
+        sudo sed -i '' '/${self.triggers.cluster_host}/d' /etc/hosts 2>/dev/null || true
         sudo sed -i '' '/flink.${self.triggers.dns_domain}/d' /etc/hosts 2>/dev/null || true
         echo "DNS cleanup completed"
       fi
