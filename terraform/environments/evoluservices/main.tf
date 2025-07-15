@@ -107,6 +107,47 @@ resource "null_resource" "wait_for_proxy" {
 
 
 
+# Configure DNS locally for Terraform
+resource "null_resource" "configure_hosts" {
+  depends_on = [module.proxy]
+  
+  provisioner "local-exec" {
+    command = <<-EOF
+      if [ "$GITHUB_ACTIONS" = "true" ]; then
+        echo "Running in GitHub Actions - DNS configuration not needed"
+        exit 0
+      fi
+      
+      if command -v sudo >/dev/null 2>&1; then
+        sudo sed -i '' '/${regex("(.*):", module.kafka_cluster.bootstrap_endpoint)[0]}/d' /etc/hosts 2>/dev/null || true
+        sudo sed -i '' '/flink.${module.private_link_attachment.dns_domain}/d' /etc/hosts 2>/dev/null || true
+        echo '${module.proxy.proxy_public_ip} ${regex("(.*):", module.kafka_cluster.bootstrap_endpoint)[0]}' | sudo tee -a /etc/hosts
+        echo '${module.proxy.proxy_public_ip} flink.${module.private_link_attachment.dns_domain}' | sudo tee -a /etc/hosts
+        echo "DNS configured successfully for Kafka and Flink"
+      else
+        echo "Manual DNS required: ${module.proxy.proxy_public_ip} ${regex("(.*):", module.kafka_cluster.bootstrap_endpoint)[0]}"
+      fi
+    EOF
+  }
+  
+  provisioner "local-exec" {
+    when = destroy
+    command = <<-EOF
+      if [ "$GITHUB_ACTIONS" != "true" ] && command -v sudo >/dev/null 2>&1; then
+        sudo sed -i '' '/${regex("(.*):", self.triggers.cluster_host)[0]}/d' /etc/hosts 2>/dev/null || true
+        sudo sed -i '' '/flink.${self.triggers.dns_domain}/d' /etc/hosts 2>/dev/null || true
+        echo "DNS cleanup completed"
+      fi
+    EOF
+  }
+  
+  triggers = {
+    proxy_ip = module.proxy.proxy_public_ip
+    cluster_host = regex("(.*):", module.kafka_cluster.bootstrap_endpoint)[0]
+    dns_domain = module.private_link_attachment.dns_domain
+  }
+}
+
 # Wait for role binding to be ready
 resource "null_resource" "wait_for_permissions" {
   depends_on = [module.role_binding]
@@ -130,7 +171,7 @@ module "kafka_topic" {
   depends_on = [
     module.api_key_manager,
     module.role_binding_topic,
-    module.proxy
+    resource.null_resource.configure_hosts
   ]
 }
 
