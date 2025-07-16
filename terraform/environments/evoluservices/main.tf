@@ -232,6 +232,13 @@ module "kafka_connector_mysql_source" {
     {
       "kafka.api.key"       = module.api_key_manager.kafka_api_key
       "kafka.api.secret"    = module.api_key_manager.kafka_api_secret
+      "database.history.kafka.bootstrap.servers" = module.kafka_cluster.bootstrap_endpoint
+      "database.history.consumer.security.protocol" = "SASL_SSL"
+      "database.history.producer.security.protocol" = "SASL_SSL"
+      "database.history.consumer.sasl.mechanism" = "PLAIN"
+      "database.history.producer.sasl.mechanism" = "PLAIN"
+      "database.history.consumer.sasl.jaas.config" = "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"${module.api_key_manager.kafka_api_key}\" password=\"${module.api_key_manager.kafka_api_secret}\";"
+      "database.history.producer.sasl.jaas.config" = "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"${module.api_key_manager.kafka_api_key}\" password=\"${module.api_key_manager.kafka_api_secret}\";"
     },
     var.mysql_source_config_nonsensitive
   )
@@ -239,9 +246,8 @@ module "kafka_connector_mysql_source" {
     "database.password" = var.mysql_password
   }
   
-
-  
   depends_on = [
-    module.api_key_manager
+    module.api_key_manager,
+    module.kafka_cluster
   ]
 }

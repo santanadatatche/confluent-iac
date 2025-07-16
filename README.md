@@ -283,6 +283,40 @@ terraform output flink_public_endpoint
 - **Prefixo**: `mysql`
 - **Transformações**: ExtractNewRecordState
 
+#### Configurações para Diferentes Versões do MySQL
+
+##### Aurora MySQL 8.0
+```hcl
+"ssl.mode"                           = "required"     # Obrigatório para Aurora
+"snapshot.mode"                      = "when_needed"  # Recomendado para Aurora
+"snapshot.locking.mode"              = "none"         # Evita bloqueios em Aurora
+"binlog.format"                      = "ROW"          # Formato necessário
+"database.server.id"                 = "85744"        # ID único para o conector
+"database.history.store.only.captured.tables.ddl" = "true" # Otimização
+```
+
+##### MySQL 8.0 Padrão
+```hcl
+"ssl.mode"                           = "preferred"    # Ou "required" se SSL configurado
+"snapshot.mode"                      = "when_needed"  # Ou "initial" para snapshot completo
+"snapshot.locking.mode"              = "minimal"      # Menos restritivo que "none"
+"binlog.format"                      = "ROW"          # Deve ser configurado no servidor
+"database.server.id"                 = "85744"        # ID único para o conector
+```
+
+##### MySQL 5.7 ou Anterior
+```hcl
+"ssl.mode"                           = "preferred"    # Ajuste conforme necessidade
+"snapshot.mode"                      = "initial"      # Recomendado para versões antigas
+"database.server.id.offset"          = "1000"        # Evita conflitos de ID
+"database.connectionTimeZone"        = "SERVER"       # Ajuda com diferenças de fuso horário
+```
+
+##### Pré-requisitos no Servidor MySQL
+- Binlog habilitado com formato ROW: `binlog_format=ROW`
+- Permissões do usuário: `REPLICATION SLAVE`, `REPLICATION CLIENT`, `SELECT`
+- Acessibilidade do servidor a partir do Confluent Cloud
+
 ### DynamoDB CDC Source Connector
 - **Classe**: `DynamoDbCdcSource`
 - **Formato**: AVRO
