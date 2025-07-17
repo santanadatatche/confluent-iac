@@ -98,6 +98,19 @@ jobs:
           CONFLUENT_CLOUD_API_SECRET: ${{ secrets.CONFLUENT_CLOUD_API_SECRET }}
         run: terraform init
         
+      - name: Configure DNS for Private Link
+        if: github.event.inputs.action != 'destroy'
+        run: |
+          # Configure DNS using AWS DNS resolver IP
+          echo "169.254.169.253 *.us-east-2.aws.private.confluent.cloud" | sudo tee -a /etc/hosts
+          echo "169.254.169.253 *.use2-az1.us-east-2.aws.private.confluent.cloud" | sudo tee -a /etc/hosts
+          echo "169.254.169.253 *.use2-az2.us-east-2.aws.private.confluent.cloud" | sudo tee -a /etc/hosts
+          echo "169.254.169.253 *.use2-az3.us-east-2.aws.private.confluent.cloud" | sudo tee -a /etc/hosts
+          echo "169.254.169.253 flink.us-east-2.aws.private.confluent.cloud" | sudo tee -a /etc/hosts
+          
+          # Verify the entries
+          cat /etc/hosts
+          
       - name: Terraform Apply
         if: github.event.inputs.action != 'destroy'
         working-directory: terraform/environments/evoluservices
@@ -116,6 +129,12 @@ jobs:
           TF_VAR_aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: terraform apply -auto-approve -var-file=terraform.tfvars
         
+      - name: Configure DNS for Private Link
+        if: github.event.inputs.action == 'destroy'
+        run: |
+          # Configure DNS using AWS DNS resolver IP
+          bash scripts/setup_dns.sh
+          
       - name: Terraform Destroy
         if: github.event.inputs.action == 'destroy'
         working-directory: terraform/environments/evoluservices
@@ -132,15 +151,7 @@ jobs:
           TF_VAR_connector_dynamodb_secret_key: ${{ secrets.CONNECTOR_DYNAMODB_SECRET_KEY }}
           TF_VAR_aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           TF_VAR_aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        run: |
-          # Remove problematic resources from state first
-          echo "Removing kafka resources from state..."
-          terraform state rm module.kafka_topic.confluent_kafka_topic.this || true
-          terraform state rm module.kafka_connector_dynamodb_source.confluent_connector.this || true
-          terraform state rm module.kafka_connector_mysql_source.confluent_connector.this || true
-          
-          # Now destroy everything else
-          terraform destroy -auto-approve -var-file=terraform.tfvars
+        run: terraform destroy -auto-approve -var-file=terraform.tfvars
         
       - name: Show Terraform Outputs
         if: github.event.inputs.action != 'destroy'
