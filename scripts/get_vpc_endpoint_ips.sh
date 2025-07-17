@@ -65,30 +65,76 @@ fi
 
 # Verificar se o AWS CLI está instalado
 if ! command -v aws &> /dev/null; then
-  echo -e "${RED}AWS CLI não encontrado. Por favor, instale o AWS CLI.${NC}"
-  exit 1
-fi
-
-# Obter as interfaces de rede do VPC Endpoint
-echo -e "${YELLOW}Obtendo interfaces de rede do VPC Endpoint...${NC}"
-NETWORK_INTERFACES=$(aws ec2 describe-vpc-endpoints --vpc-endpoint-ids "$VPC_ENDPOINT_ID" --query 'VpcEndpoints[0].NetworkInterfaceIds' --output json)
-
-if [ -z "$NETWORK_INTERFACES" ] || [ "$NETWORK_INTERFACES" == "null" ]; then
-  echo -e "${RED}Não foi possível obter as interfaces de rede do VPC Endpoint.${NC}"
-  exit 1
-fi
-
-# Obter os IPs das interfaces de rede
-echo -e "${YELLOW}Obtendo IPs das interfaces de rede...${NC}"
-IPS=()
-for NI_ID in $(echo "$NETWORK_INTERFACES" | jq -r '.[]'); do
-  IP=$(aws ec2 describe-network-interfaces --network-interface-ids "$NI_ID" --query 'NetworkInterfaces[0].PrivateIpAddress' --output text)
-  IPS+=("$IP")
-done
-
-if [ ${#IPS[@]} -eq 0 ]; then
-  echo -e "${RED}Não foi possível obter os IPs das interfaces de rede.${NC}"
-  exit 1
+  echo -e "${RED}AWS CLI não encontrado. Solicitando IP manualmente...${NC}"
+  read -p "IP do VPC Endpoint: " ENDPOINT_IP
+  IPS=("$ENDPOINT_IP")
+else
+  # Tentar obter as interfaces de rede do VPC Endpoint
+  echo -e "${YELLOW}Tentando obter interfaces de rede do VPC Endpoint...${NC}"
+  
+  # Verificar se temos credenciais AWS
+  if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+    echo -e "${YELLOW}Credenciais AWS não encontradas no ambiente. Solicitando credenciais...${NC}"
+    
+    read -p "AWS Access Key ID (ou deixe em branco para inserir IP manualmente): " AWS_ACCESS_KEY_ID
+    
+    if [ -z "$AWS_ACCESS_KEY_ID" ]; then
+      read -p "IP do VPC Endpoint: " ENDPOINT_IP
+      IPS=("$ENDPOINT_IP")
+    else
+      read -sp "AWS Secret Access Key: " AWS_SECRET_ACCESS_KEY
+      echo
+      
+      export AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID"
+      export AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY"
+      
+      # Obter as interfaces de rede do VPC Endpoint
+      NETWORK_INTERFACES=$(aws ec2 describe-vpc-endpoints --vpc-endpoint-ids "$VPC_ENDPOINT_ID" --query 'VpcEndpoints[0].NetworkInterfaceIds' --output json 2>/dev/null || echo "[]")
+      
+      if [ -z "$NETWORK_INTERFACES" ] || [ "$NETWORK_INTERFACES" == "null" ] || [ "$NETWORK_INTERFACES" == "[]" ]; then
+        echo -e "${RED}Não foi possível obter as interfaces de rede do VPC Endpoint.${NC}"
+        read -p "IP do VPC Endpoint: " ENDPOINT_IP
+        IPS=("$ENDPOINT_IP")
+      else
+        # Obter os IPs das interfaces de rede
+        echo -e "${YELLOW}Obtendo IPs das interfaces de rede...${NC}"
+        IPS=()
+        for NI_ID in $(echo "$NETWORK_INTERFACES" | jq -r '.[]'); do
+          IP=$(aws ec2 describe-network-interfaces --network-interface-ids "$NI_ID" --query 'NetworkInterfaces[0].PrivateIpAddress' --output text)
+          IPS+=("$IP")
+        done
+        
+        if [ ${#IPS[@]} -eq 0 ]; then
+          echo -e "${RED}Não foi possível obter os IPs das interfaces de rede.${NC}"
+          read -p "IP do VPC Endpoint: " ENDPOINT_IP
+          IPS=("$ENDPOINT_IP")
+        fi
+      fi
+    fi
+  else
+    # Obter as interfaces de rede do VPC Endpoint
+    NETWORK_INTERFACES=$(aws ec2 describe-vpc-endpoints --vpc-endpoint-ids "$VPC_ENDPOINT_ID" --query 'VpcEndpoints[0].NetworkInterfaceIds' --output json 2>/dev/null || echo "[]")
+    
+    if [ -z "$NETWORK_INTERFACES" ] || [ "$NETWORK_INTERFACES" == "null" ] || [ "$NETWORK_INTERFACES" == "[]" ]; then
+      echo -e "${RED}Não foi possível obter as interfaces de rede do VPC Endpoint.${NC}"
+      read -p "IP do VPC Endpoint: " ENDPOINT_IP
+      IPS=("$ENDPOINT_IP")
+    else
+      # Obter os IPs das interfaces de rede
+      echo -e "${YELLOW}Obtendo IPs das interfaces de rede...${NC}"
+      IPS=()
+      for NI_ID in $(echo "$NETWORK_INTERFACES" | jq -r '.[]'); do
+        IP=$(aws ec2 describe-network-interfaces --network-interface-ids "$NI_ID" --query 'NetworkInterfaces[0].PrivateIpAddress' --output text)
+        IPS+=("$IP")
+      done
+      
+      if [ ${#IPS[@]} -eq 0 ]; then
+        echo -e "${RED}Não foi possível obter os IPs das interfaces de rede.${NC}"
+        read -p "IP do VPC Endpoint: " ENDPOINT_IP
+        IPS=("$ENDPOINT_IP")
+      fi
+    fi
+  fi
 fi
 
 # Criar entradas DNS
