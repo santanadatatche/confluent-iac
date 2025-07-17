@@ -116,6 +116,19 @@ jobs:
           TF_VAR_aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: terraform apply -auto-approve -var-file=terraform.tfvars
         
+      - name: Configure DNS for Private Link
+        if: github.event.inputs.action == 'destroy'
+        run: |
+          # Get the cluster ID from state
+          CLUSTER_ID=$(terraform -chdir=terraform/environments/evoluservices state show module.kafka_cluster.confluent_kafka_cluster.enterprise[0] | grep id | head -1 | awk '{print $3}' | tr -d '"')
+          echo "Cluster ID: $CLUSTER_ID"
+          
+          # Add entry to /etc/hosts
+          echo "127.0.0.1 $CLUSTER_ID.us-east-2.aws.private.confluent.cloud" | sudo tee -a /etc/hosts
+          
+          # Verify entry
+          cat /etc/hosts
+          
       - name: Terraform Destroy
         if: github.event.inputs.action == 'destroy'
         working-directory: terraform/environments/evoluservices
