@@ -132,8 +132,16 @@ jobs:
       - name: Configure DNS for Private Link
         if: github.event.inputs.action == 'destroy'
         run: |
-          # Configure DNS using AWS DNS resolver IP
-          bash scripts/setup_dns.sh
+          # Configure DNS using AWS DNS resolver IP directly
+          echo "169.254.169.253 *.us-east-2.aws.private.confluent.cloud" | sudo tee -a /etc/hosts
+          echo "169.254.169.253 *.use2-az1.us-east-2.aws.private.confluent.cloud" | sudo tee -a /etc/hosts
+          echo "169.254.169.253 *.use2-az2.us-east-2.aws.private.confluent.cloud" | sudo tee -a /etc/hosts
+          echo "169.254.169.253 *.use2-az3.us-east-2.aws.private.confluent.cloud" | sudo tee -a /etc/hosts
+          echo "169.254.169.253 flink.us-east-2.aws.private.confluent.cloud" | sudo tee -a /etc/hosts
+          echo "169.254.169.253 lkc-y8v0xj.us-east-2.aws.private.confluent.cloud" | sudo tee -a /etc/hosts
+          
+          # Verify the entries
+          cat /etc/hosts
           
       - name: Terraform Destroy
         if: github.event.inputs.action == 'destroy'
