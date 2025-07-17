@@ -27,18 +27,30 @@ if [ ! -f "terraform.tfstate" ] && [ ! -f ".terraform/terraform.tfstate" ]; then
   terraform init
 fi
 
-# Obter o comando de hosts
-echo -e "${YELLOW}Obtendo configuração DNS necessária...${NC}"
+# Tentar obter as entradas DNS do output do Terraform
+echo -e "${YELLOW}Tentando obter configuração DNS do Terraform...${NC}"
 HOSTS_ENTRIES=$(terraform output -raw hosts_command_for_destroy 2>/dev/null || echo "")
 
-if [ -z "$HOSTS_ENTRIES" ]; then
-  echo -e "${RED}Não foi possível obter as entradas de hosts. O state pode estar corrompido ou inacessível.${NC}"
-  echo -e "${YELLOW}Tentando executar destroy diretamente...${NC}"
+if [ -z "$HOSTS_ENTRIES" ] || echo "$HOSTS_ENTRIES" | grep -q "No network interfaces found"; then
+  echo -e "${YELLOW}Não foi possível obter as entradas DNS do Terraform. Tentando obter diretamente da AWS CLI...${NC}"
+  
+  # Executar o script para obter os IPs diretamente da AWS CLI
+  "$PROJECT_DIR/scripts/get_vpc_endpoint_ips.sh"
+  
+  # Verificar se o arquivo dns_entries.txt foi criado
+  if [ -f "$PROJECT_DIR/dns_entries.txt" ]; then
+    DNS_ENTRIES=$(cat "$PROJECT_DIR/dns_entries.txt")
+  else
+    echo -e "${RED}Não foi possível obter as entradas DNS. Tentando executar destroy diretamente...${NC}"
+    DNS_ENTRIES=""
+  fi
 else
   # Extrair apenas as linhas de IP/hostname do comando
   DNS_ENTRIES=$(echo "$HOSTS_ENTRIES" | grep -v "echo\|sudo\|cat\|EOF\|#" | grep -v "^$")
-  
-  # Adicionar entradas temporárias ao /etc/hosts
+fi
+
+# Adicionar entradas temporárias ao /etc/hosts se tivermos DNS_ENTRIES
+if [ ! -z "$DNS_ENTRIES" ]; then
   echo -e "${YELLOW}Adicionando entradas DNS temporárias ao /etc/hosts...${NC}"
   echo "$DNS_ENTRIES"
   
@@ -62,6 +74,11 @@ if [ ! -z "$DNS_ENTRIES" ]; then
   sudo mv /tmp/hosts.tmp /etc/hosts
   
   echo -e "${GREEN}Entradas DNS removidas com sucesso!${NC}"
+fi
+
+# Limpar arquivo temporário
+if [ -f "$PROJECT_DIR/dns_entries.txt" ]; then
+  rm -f "$PROJECT_DIR/dns_entries.txt"
 fi
 
 echo -e "${GREEN}Processo de destroy concluído!${NC}"
