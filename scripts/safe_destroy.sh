@@ -21,10 +21,28 @@ echo -e "${YELLOW}Iniciando processo de destroy seguro para Confluent Cloud com 
 # Navegar para o diretório do ambiente
 cd "$ENV_DIR"
 
-# Verificar se o state existe
-if [ ! -f "terraform.tfstate" ] && [ ! -f ".terraform/terraform.tfstate" ]; then
-  echo -e "${RED}Arquivo de state não encontrado localmente. Tentando recuperar do S3...${NC}"
-  terraform init
+# Verificar se o state existe localmente
+if [ -f "terraform.tfstate" ] || [ -f ".terraform/terraform.tfstate" ]; then
+  echo -e "${GREEN}Arquivo de state encontrado localmente.${NC}"
+else
+  echo -e "${YELLOW}Arquivo de state não encontrado localmente.${NC}"
+  
+  # Verificar se as credenciais AWS estão configuradas
+  if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+    echo -e "${YELLOW}Credenciais AWS não encontradas no ambiente. Solicitando credenciais...${NC}"
+    
+    read -p "AWS Access Key ID: " AWS_ACCESS_KEY_ID
+    read -sp "AWS Secret Access Key: " AWS_SECRET_ACCESS_KEY
+    echo
+    
+    export AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID"
+    export AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY"
+  fi
+  
+  echo -e "${YELLOW}Tentando recuperar state do S3...${NC}"
+  terraform init || {
+    echo -e "${RED}Não foi possível recuperar o state do S3. Continuando sem state...${NC}"
+  }
 fi
 
 # Obter as entradas DNS diretamente da AWS CLI
@@ -37,8 +55,25 @@ echo -e "${YELLOW}Obtendo configuração DNS diretamente da AWS CLI...${NC}"
 if [ -f "$PROJECT_DIR/dns_entries.txt" ]; then
   DNS_ENTRIES=$(cat "$PROJECT_DIR/dns_entries.txt")
 else
-  echo -e "${RED}Não foi possível obter as entradas DNS. Tentando executar destroy diretamente...${NC}"
-  DNS_ENTRIES=""
+  echo -e "${YELLOW}Não foi possível obter as entradas DNS automaticamente.${NC}"
+  
+  # Perguntar se deseja adicionar manualmente
+  read -p "Deseja adicionar as entradas DNS manualmente? (s/n): " ADD_MANUALLY
+  if [[ "$ADD_MANUALLY" =~ ^[Ss]$ ]]; then
+    "$PROJECT_DIR/scripts/manual_dns_entries.sh"
+    
+    # Verificar se o arquivo dns_entries.txt foi criado
+    if [ -f "dns_entries.txt" ]; then
+      DNS_ENTRIES=$(cat "dns_entries.txt")
+      mv "dns_entries.txt" "$PROJECT_DIR/dns_entries.txt"
+    else
+      echo -e "${RED}Não foi possível obter as entradas DNS. Tentando executar destroy diretamente...${NC}"
+      DNS_ENTRIES=""
+    fi
+  else
+    echo -e "${RED}Continuando sem entradas DNS. O destroy pode falhar...${NC}"
+    DNS_ENTRIES=""
+  fi
 fi
 
 # Adicionar entradas temporárias ao /etc/hosts se tivermos DNS_ENTRIES

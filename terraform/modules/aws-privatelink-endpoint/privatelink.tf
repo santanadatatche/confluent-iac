@@ -146,13 +146,4 @@ resource "aws_route53_record" "privatelink-zonal" {
 # Flink DNS records already exist - skipping creation
 # The existing records will be used for Flink connectivity
 
-output "vpc_endpoint_id" {
-  value = aws_vpc_endpoint.privatelink.id
-}
-
-output "flink_private_endpoint" {
-  description = "Flink private endpoint URL"
-  value = "flink.${var.dns_domain}"
-}
-
-# Output movido para outputs.tf
+# Outputs movidos para outputs.tf
