@@ -17,6 +17,36 @@ on:
           - destroy
 
 jobs:
+  get-cluster-id:
+    name: Get Cluster ID
+    runs-on: ubuntu-latest
+    environment: staging
+    if: github.event.inputs.action == 'destroy'
+    outputs:
+      cluster_id: ${{ steps.get-id.outputs.cluster_id }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+          
+      - name: Get Cluster ID from S3 State
+        id: get-id
+        run: |
+          # Download state file
+          aws s3 cp s3://confluent-iac-terraform-state/staging/terraform.tfstate terraform.tfstate
+          
+          # Extract cluster ID using jq
+          CLUSTER_ID=$(cat terraform.tfstate | jq -r '.resources[] | select(.type=="confluent_kafka_cluster" and .name=="enterprise") | .instances[0].attributes.id')
+          echo "Found cluster ID: $CLUSTER_ID"
+          echo "cluster_id=$CLUSTER_ID" >> $GITHUB_OUTPUT
+  
   plan:
     name: Terraform Plan
     runs-on: ubuntu-latest
@@ -71,6 +101,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: staging
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: [get-cluster-id]
     
     steps:
       - name: Checkout
@@ -138,7 +169,7 @@ jobs:
           echo "169.254.169.253 *.use2-az2.us-east-2.aws.private.confluent.cloud" | sudo tee -a /etc/hosts
           echo "169.254.169.253 *.use2-az3.us-east-2.aws.private.confluent.cloud" | sudo tee -a /etc/hosts
           echo "169.254.169.253 flink.us-east-2.aws.private.confluent.cloud" | sudo tee -a /etc/hosts
-          echo "169.254.169.253 lkc-y8v0xj.us-east-2.aws.private.confluent.cloud" | sudo tee -a /etc/hosts
+          echo "169.254.169.253 ${{ needs.get-cluster-id.outputs.cluster_id }}.us-east-2.aws.private.confluent.cloud" | sudo tee -a /etc/hosts
           
           # Verify the entries
           cat /etc/hosts
@@ -159,7 +190,16 @@ jobs:
           TF_VAR_connector_dynamodb_secret_key: ${{ secrets.CONNECTOR_DYNAMODB_SECRET_KEY }}
           TF_VAR_aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           TF_VAR_aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        run: terraform destroy -auto-approve -var-file=terraform.tfvars
+        run: |
+          # Remove problematic resources from state first
+          echo "Removing kafka resources from state..."
+          terraform state rm module.kafka_topic.confluent_kafka_topic.this || true
+          terraform state rm module.kafka_connector_dynamodb_source.confluent_connector.this || true
+          terraform state rm module.kafka_connector_mysql_source.confluent_connector.this || true
+          terraform state rm module.kafka_connector_s3_sink.confluent_connector.this || true
+          
+          # Now destroy everything else
+          terraform destroy -auto-approve -var-file=terraform.tfvars
         
       - name: Show Terraform Outputs
         if: github.event.inputs.action != 'destroy'
