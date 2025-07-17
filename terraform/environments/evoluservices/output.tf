@@ -192,7 +192,7 @@ output "hosts_command_for_destroy" {
     echo "Adicionando entradas temporárias no /etc/hosts para permitir destroy..."
     sudo bash -c 'cat << EOF >> /etc/hosts
     # Confluent Cloud Private Link DNS entries (temporary for destroy)
-    ${module.aws_privatelink_endpoint.aws_privatelink_endpoint_dns_entries}
+    ${module.privatelink.aws_privatelink_endpoint_dns_entries}
     EOF'
     echo "Entradas adicionadas com sucesso. Agora você pode executar terraform destroy."
   EOT

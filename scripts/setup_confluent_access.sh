@@ -44,7 +44,7 @@ echo -e "${YELLOW}Obtendo configuração DNS necessária...${NC}"
 DNS_ENTRIES=$(terraform output -raw hosts_command_for_destroy 2>/dev/null | grep -v "echo\|sudo\|cat\|EOF\|#" | grep -v "^$" || echo "")
 
 if [ -z "$DNS_ENTRIES" ]; then
-  echo -e "${RED}Não foi possível obter as entradas DNS. Verifique se o módulo aws_privatelink_endpoint foi atualizado.${NC}"
+  echo -e "${RED}Não foi possível obter as entradas DNS. Verifique se o módulo privatelink foi atualizado.${NC}"
   exit 1
 fi
 
