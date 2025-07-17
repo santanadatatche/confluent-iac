@@ -130,18 +130,8 @@ jobs:
           TF_VAR_aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: terraform apply -auto-approve -var-file=terraform.tfvars
         
-      - name: Configure DNS for Private Link
+      - name: Run Prepare-Destroy Script
         if: github.event.inputs.action == 'destroy'
-        run: |
-          # Configure DNS using AWS DNS resolver IP directly
-          echo "169.254.169.253 *.us-east-2.aws.private.confluent.cloud" | sudo tee -a /etc/hosts
-          
-          # Verify the entries
-          cat /etc/hosts
-          
-      - name: Terraform Destroy
-        if: github.event.inputs.action == 'destroy'
-        working-directory: terraform/environments/evoluservices
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -155,7 +145,7 @@ jobs:
           TF_VAR_connector_dynamodb_secret_key: ${{ secrets.CONNECTOR_DYNAMODB_SECRET_KEY }}
           TF_VAR_aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           TF_VAR_aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        run: terraform destroy -auto-approve -var-file=terraform.tfvars -target=module.environment -target=module.kafka_cluster -target=module.service_account_manager -target=module.api_key_manager -target=module.role_binding -target=module.role_binding_topic -target=module.private_link_attachment -target=module.privatelink -target=module.private_link_attachment_connection -target=module.proxy
+        run: bash scripts/prepare-destroy.sh
         
       - name: Show Terraform Outputs
         if: github.event.inputs.action != 'destroy'

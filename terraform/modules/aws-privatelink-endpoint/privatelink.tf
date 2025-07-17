@@ -154,3 +154,15 @@ output "flink_private_endpoint" {
   description = "Flink private endpoint URL"
   value = "flink.${var.dns_domain}"
 }
+
+output "aws_privatelink_endpoint_dns_entries" {
+  description = "DNS entries for /etc/hosts to enable Private Link access"
+  value = join("\n", [
+    # Wildcard entry for all services
+    "${aws_vpc_endpoint.privatelink.dns_entry[0]["ip_address"]} *.${var.dns_domain}",
+    # Specific entry for the Kafka cluster
+    "${aws_vpc_endpoint.privatelink.dns_entry[0]["ip_address"]} ${local.network_id}.${var.dns_domain}",
+    # Specific entry for Flink
+    "${aws_vpc_endpoint.privatelink.dns_entry[0]["ip_address"]} flink.${var.dns_domain}"
+  ])
+}

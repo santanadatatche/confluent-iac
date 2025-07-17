@@ -184,3 +184,16 @@ output "flink_public_endpoint" {
   description = "Flink public endpoint URL"
   value       = "flink.${var.region}.${lower(var.cloud)}.confluent.cloud"
 }
+
+output "hosts_command_for_destroy" {
+  description = "Command to add hosts entries before destroy"
+  value       = <<-EOT
+    # Execute este comando ANTES de executar terraform destroy
+    echo "Adicionando entradas temporárias no /etc/hosts para permitir destroy..."
+    sudo bash -c 'cat << EOF >> /etc/hosts
+    # Confluent Cloud Private Link DNS entries (temporary for destroy)
+    ${module.aws_privatelink_endpoint.aws_privatelink_endpoint_dns_entries}
+    EOF'
+    echo "Entradas adicionadas com sucesso. Agora você pode executar terraform destroy."
+  EOT
+}
