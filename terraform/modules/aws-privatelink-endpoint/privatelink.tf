@@ -155,14 +155,4 @@ output "flink_private_endpoint" {
   value = "flink.${var.dns_domain}"
 }
 
-output "aws_privatelink_endpoint_dns_entries" {
-  description = "DNS entries for /etc/hosts to enable Private Link access"
-  value = length(aws_vpc_endpoint.privatelink.network_interface_ids) > 0 ? join("\n", [
-    # Wildcard entry for all services
-    "${data.aws_network_interface.privatelink[0].private_ip} *.${var.dns_domain}",
-    # Specific entry for the Kafka cluster
-    "${data.aws_network_interface.privatelink[0].private_ip} ${local.network_id}.${var.dns_domain}",
-    # Specific entry for Flink
-    "${data.aws_network_interface.privatelink[0].private_ip} flink.${var.dns_domain}"
-  ]) : "# No network interfaces found for VPC endpoint"
-}
+# Output movido para outputs.tf

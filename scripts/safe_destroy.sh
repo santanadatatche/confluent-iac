@@ -27,26 +27,18 @@ if [ ! -f "terraform.tfstate" ] && [ ! -f ".terraform/terraform.tfstate" ]; then
   terraform init
 fi
 
-# Tentar obter as entradas DNS do output do Terraform
-echo -e "${YELLOW}Tentando obter configuração DNS do Terraform...${NC}"
-HOSTS_ENTRIES=$(terraform output -raw hosts_command_for_destroy 2>/dev/null || echo "")
+# Obter as entradas DNS diretamente da AWS CLI
+echo -e "${YELLOW}Obtendo configuração DNS diretamente da AWS CLI...${NC}"
 
-if [ -z "$HOSTS_ENTRIES" ] || echo "$HOSTS_ENTRIES" | grep -q "No network interfaces found"; then
-  echo -e "${YELLOW}Não foi possível obter as entradas DNS do Terraform. Tentando obter diretamente da AWS CLI...${NC}"
-  
-  # Executar o script para obter os IPs diretamente da AWS CLI
-  "$PROJECT_DIR/scripts/get_vpc_endpoint_ips.sh"
-  
-  # Verificar se o arquivo dns_entries.txt foi criado
-  if [ -f "$PROJECT_DIR/dns_entries.txt" ]; then
-    DNS_ENTRIES=$(cat "$PROJECT_DIR/dns_entries.txt")
-  else
-    echo -e "${RED}Não foi possível obter as entradas DNS. Tentando executar destroy diretamente...${NC}"
-    DNS_ENTRIES=""
-  fi
+# Executar o script para obter os IPs diretamente da AWS CLI
+"$PROJECT_DIR/scripts/get_vpc_endpoint_ips.sh"
+
+# Verificar se o arquivo dns_entries.txt foi criado
+if [ -f "$PROJECT_DIR/dns_entries.txt" ]; then
+  DNS_ENTRIES=$(cat "$PROJECT_DIR/dns_entries.txt")
 else
-  # Extrair apenas as linhas de IP/hostname do comando
-  DNS_ENTRIES=$(echo "$HOSTS_ENTRIES" | grep -v "echo\|sudo\|cat\|EOF\|#" | grep -v "^$")
+  echo -e "${RED}Não foi possível obter as entradas DNS. Tentando executar destroy diretamente...${NC}"
+  DNS_ENTRIES=""
 fi
 
 # Adicionar entradas temporárias ao /etc/hosts se tivermos DNS_ENTRIES

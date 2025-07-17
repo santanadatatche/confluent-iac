@@ -31,8 +31,27 @@ fi
 echo -e "${YELLOW}Obtendo ID do VPC Endpoint...${NC}"
 VPC_ENDPOINT_ID=$(terraform output -raw vpc_endpoint_id 2>/dev/null || echo "")
 DNS_DOMAIN=$(terraform output -raw platt_dns_domain 2>/dev/null || echo "")
-NETWORK_ID=$(echo "$DNS_DOMAIN" | cut -d'.' -f1)
+CLUSTER_ID=$(terraform output -raw kafka_cluster_id 2>/dev/null || echo "")
 
+# Se não conseguir obter o domínio DNS, tentar extrair do bootstrap endpoint
+if [ -z "$DNS_DOMAIN" ]; then
+  BOOTSTRAP_ENDPOINT=$(terraform output -raw kafka_bootstrap_endpoint 2>/dev/null || echo "")
+  if [ ! -z "$BOOTSTRAP_ENDPOINT" ]; then
+    # Extrair o domínio do bootstrap endpoint (formato: lkc-xxxxx.region.cloud.confluent.cloud:9092)
+    DNS_DOMAIN=$(echo "$BOOTSTRAP_ENDPOINT" | cut -d':' -f1 | cut -d'.' -f2-)
+    echo -e "${YELLOW}Domínio DNS extraído do bootstrap endpoint: $DNS_DOMAIN${NC}"
+  fi
+fi
+
+# Extrair o network ID do domínio DNS ou do cluster ID
+if [ ! -z "$DNS_DOMAIN" ]; then
+  NETWORK_ID=$(echo "$DNS_DOMAIN" | cut -d'.' -f1)
+else
+  # Se não tiver o domínio DNS, tentar usar o cluster ID como network ID
+  NETWORK_ID=$CLUSTER_ID
+fi
+
+# Se ainda não tiver as informações necessárias, solicitar entrada manual
 if [ -z "$VPC_ENDPOINT_ID" ] || [ -z "$DNS_DOMAIN" ]; then
   echo -e "${RED}Não foi possível obter o ID do VPC Endpoint ou o domínio DNS.${NC}"
   
@@ -40,6 +59,7 @@ if [ -z "$VPC_ENDPOINT_ID" ] || [ -z "$DNS_DOMAIN" ]; then
   echo -e "${YELLOW}Por favor, forneça as informações manualmente:${NC}"
   read -p "ID do VPC Endpoint (ex: vpce-0123456789abcdef0): " VPC_ENDPOINT_ID
   read -p "Domínio DNS do Private Link (ex: pr123a.us-east-2.aws.confluent.cloud): " DNS_DOMAIN
+  read -p "ID do Cluster Kafka (ex: lkc-xxxxx): " CLUSTER_ID
   NETWORK_ID=$(echo "$DNS_DOMAIN" | cut -d'.' -f1)
 fi
 
@@ -77,8 +97,20 @@ echo -e "${YELLOW}Criando entradas DNS...${NC}"
 
 DNS_ENTRIES=""
 for IP in "${IPS[@]}"; do
+  # Entrada wildcard para todos os serviços
   DNS_ENTRIES+="$IP *.${DNS_DOMAIN}\n"
-  DNS_ENTRIES+="$IP ${NETWORK_ID}.${DNS_DOMAIN}\n"
+  
+  # Entrada específica para o cluster Kafka
+  if [ ! -z "$CLUSTER_ID" ]; then
+    DNS_ENTRIES+="$IP ${CLUSTER_ID}.${DNS_DOMAIN}\n"
+  fi
+  
+  # Entrada para o domínio principal (network ID)
+  if [ ! -z "$NETWORK_ID" ] && [ "$NETWORK_ID" != "$CLUSTER_ID" ]; then
+    DNS_ENTRIES+="$IP ${NETWORK_ID}.${DNS_DOMAIN}\n"
+  fi
+  
+  # Entrada para Flink
   DNS_ENTRIES+="$IP flink.${DNS_DOMAIN}\n"
 done
 
