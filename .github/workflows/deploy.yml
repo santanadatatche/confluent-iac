@@ -130,8 +130,9 @@ jobs:
           TF_VAR_aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: terraform apply -auto-approve -var-file=terraform.tfvars
         
-      - name: Run Prepare-Destroy Script
+      - name: Terraform Apply Destroy
         if: github.event.inputs.action == 'destroy'
+        working-directory: terraform/environments/evoluservices
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -145,7 +146,7 @@ jobs:
           TF_VAR_connector_dynamodb_secret_key: ${{ secrets.CONNECTOR_DYNAMODB_SECRET_KEY }}
           TF_VAR_aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           TF_VAR_aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        run: bash scripts/prepare-destroy.sh
+        run: terraform apply -destroy -auto-approve -var-file=terraform.tfvars
         
       - name: Show Terraform Outputs
         if: github.event.inputs.action != 'destroy'
